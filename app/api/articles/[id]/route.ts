@@ -183,6 +183,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const directory = article.directory;
     const draftDir = path.join(config.draft_root_dir, directory);
     const exportDir = path.join(config.astro_export_dir, directory);
+    const draftFilesExportDir = path.join(config.draft_files_export_dir, directory);
 
     // 删除数据库中的文章
     const result = db.prepare('DELETE FROM articles WHERE id = ?').run(id);
@@ -199,6 +200,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     // 删除导出目录
     if (await directoryExists(exportDir)) {
       await removeDirectory(exportDir);
+    }
+
+    // 删除草稿文件导出目录
+    if (await directoryExists(draftFilesExportDir)) {
+      await removeDirectory(draftFilesExportDir);
     }
 
     return NextResponse.json({ success: true, message: 'Article deleted successfully' });

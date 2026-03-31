@@ -75,9 +75,10 @@ export async function exportArticle(articleId: number) {
   const mdFilePath = path.join(exportDir, 'index.md');
   await writeFile(mdFilePath, frontmatter, 'utf-8');
 
-  // 复制草稿目录中的图片文件到导出目录
+  // 复制草稿目录中的所有文件到 draft_files_export_dir
   const draftDir = path.join(config.draft_root_dir, article.directory);
-  await copyImages(draftDir, exportDir);
+  const draftFilesExportDir = path.join(config.draft_files_export_dir, article.directory);
+  await copyAllDraftFiles(draftDir, draftFilesExportDir);
 
   return { success: true, path: mdFilePath };
 }
@@ -109,11 +110,15 @@ thumbnail: "${data.thumbnail}"
   if (data.categories && data.categories.length > 0) {
     const categories = data.categories.map((c) => `"${c.name_en}"`).join(', ');
     frontmatter += `categories: [${categories}]\n`;
+  } else {
+    frontmatter += `categories: []\n`;
   }
 
   if (data.tags && data.tags.length > 0) {
     const tags = data.tags.map((t) => `"${t.name_en}"`).join(', ');
     frontmatter += `tags: [${tags}]\n`;
+  } else {
+    frontmatter += `tags: []\n`;
   }
 
   if (data.src) {
@@ -155,6 +160,37 @@ async function copyImages(sourceDir: string, targetDir: string) {
     }
   } catch (error) {
     console.error('Copy images error:', error);
+  }
+}
+
+async function copyAllDraftFiles(sourceDir: string, targetDir: string) {
+  try {
+    // 检查源目录是否存在
+    const sourceStat = await stat(sourceDir).catch(() => null);
+    if (!sourceStat || !sourceStat.isDirectory()) {
+      return;
+    }
+
+    // 确保目标目录存在
+    await mkdir(targetDir, { recursive: true });
+
+    // 读取源目录中的所有文件
+    const files = await readdir(sourceDir);
+
+    for (const file of files) {
+      const sourcePath = path.join(sourceDir, file);
+      const targetPath = path.join(targetDir, file);
+
+      // 检查是否是文件
+      const fileStat = await stat(sourcePath);
+
+      if (fileStat.isFile()) {
+        // 复制所有文件（不限制文件类型）
+        await copyFile(sourcePath, targetPath);
+      }
+    }
+  } catch (error) {
+    console.error('Copy draft files error:', error);
   }
 }
 
